@@ -1,0 +1,214 @@
+<html>
+<head>
+    <script type="text/javascript" src="js/vis.min.js"></script>
+    <link href="css/vis.min.css" rel="stylesheet" type="text/css" />
+
+    <style type="text/css">
+        #mynetwork {
+            width: 800px;
+            height: 600px;
+            border: 1px solid lightgray;
+        }
+    </style>
+</head>
+<body>
+<div id="mynetwork"></div>
+<script type="text/javascript"  src="js/steem.min.js"></script>
+<script type="text/javascript"  src="js/steemHandler.js"></script>
+
+<script type="text/javascript">
+    // create an array with nodes
+    var nodes = new vis.DataSet([
+        //{id: 1, label: 'Node 1'},
+        //{id: 2, label: 'Node 2'},
+        //{id: 3, label: 'Node 3'},
+        //{id: 4, label: 'Node 4'},
+        //{id: 5, label: 'Node 5'}
+    ]);
+
+    // create an array with edges
+    var edges = new vis.DataSet([
+        //{from: 1, to: 3},
+        //{from: 1, to: 2},
+        //{from: 2, to: 4},
+        //{from: 2, to: 5}
+    ]);
+
+    // create a network
+    var container = document.getElementById('mynetwork');
+
+    // provide the data in the vis format
+    var data = {
+        nodes: nodes,
+        edges: edges
+    };
+    var options = {
+        autoResize: true,
+        layout : {
+            improvedLayout : true
+        },
+        nodes: {
+          //shape: 'dot',
+          scaling:{
+            label: {
+              min:8,
+              max:20
+            }
+          }
+        }        
+    };
+
+    // initialize your network!
+    var network = new vis.Network(container, data, options);
+    
+//var options = {
+  //joinCondition:function(nodeOptions) {
+    //return false;
+  //}
+//}
+
+//network.clustering.cluster(options);    
+    
+function addUserNode(userid) {
+    try {
+        let n = nodes.get(userid);
+        //console.log("node", JSON.stringify(n))
+        let color = "#afceff";
+        if(highlight(userid)) {
+            color = "#affffc";
+        }
+        if(!n) {
+            nodes.add({
+                id: userid,
+                label: userid,
+                value : 1,
+                color : color
+            });
+        } else {
+            n.value += 1;
+            nodes.update(n);
+        }
+    }
+    catch (err) {
+        alert(err);
+    }
+}
+
+
+function addEdge(vote) {
+    try {
+        const id = vote.voter+":"+vote.author;
+        console.log("add edge " + id);
+        if(!edges.get(id)) {
+            
+            edges.add({
+                id: id,
+                from: vote.voter,
+                to: vote.author
+            });
+        }
+    }
+    catch (err) {
+        alert(err);
+    }
+}
+    
+function addVote(vote) {
+    if(vote.voter == vote.author) {
+        return;
+    }
+    addUserNode(vote.author);
+    addUserNode(vote.voter);
+    addEdge(vote);
+}   
+
+function dump() {
+    console.log(JSON.stringify(network.getEdges()));
+}
+
+function highlight(userid) {
+    return (document.getElementById('userid').value == userid);
+}
+
+function startstop(b,init) {
+    if(init) {
+        if(scannerTimer) {
+            clearInterval(scannerTimer);
+            scannerTimer = null;
+        }
+        runScanning();
+    } else {
+        if(scannerTimer) {
+            clearInterval(scannerTimer);
+            scannerTimer = null;
+            b.value = "Resume";
+        } else {
+            setInterval(readNextBlock, getDuration());
+            b.value = "Pause";
+        }
+    }
+    muteunmute();
+}
+
+let play = false;
+
+function muteunmute(b) {
+    let p = document.getElementById('player')
+    if(play) {
+        p.pause();
+        play = false;
+    } else {
+        p.play();
+        play = true;
+    }
+}
+
+function getDuration() {
+    return document.getElementById('duration').value;
+}
+
+
+function getWebSocket() {
+    return document.getElementById('wss').value;
+}
+function usesteemit() {
+    document.getElementById('wss').value = "wss://steemd.steemit.com";
+}
+
+function getStartBlock(block) {
+    let hdiff = document.getElementById('diff').value;
+    let blockdiff = ((60 * 60 * hdiff) / 3);
+    return block + blockdiff;
+}
+
+</script>
+    <div>
+        <div id="currentTime"></div><br/>
+        <div>
+            <label>Userid to highlight
+                <input type="text" id="userid" value="ropox" />
+            </label><br/>
+            <label>Scanning duration (milliseconds)
+                <input type="number" min="10" id="duration" value="3000" />
+            </label><br/>
+            <label>Offset in hours (0 or negative, 0.1 allowed too)
+                <input type="number" id="diff" value="0" />
+            </label><br/>
+            <label>Websocket
+                <input type="text" id="wss" value="wss://ws.golos.io" />
+                <input type="button" id=steemit" value="wss://steemd.steemit.com" onclick="usesteemit();" />
+            </label><br/>
+        </div>
+        <div>
+            <input type="button" onclick="startstop(this,true);" value="Start scanning" />
+            <input type="button" onclick="startstop(this,false);" value="Pause" />
+        </div>
+        
+        <audio id="player" controls loop="true">
+          <source src="res/Fluidscape.mp3" type="audio/mp3">
+        Your browser does not support the audio element.
+        </audio>
+            
+    </div>
+</body>
+</html>
